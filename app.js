@@ -16,6 +16,7 @@ const app = express();
 
 // middlewares
 app.use(express.json());
+app.use(express.static('./public'));
 
 // routes
 app.get('/api/v1', (req, res) => {
