@@ -4,6 +4,7 @@
 const express = require('express');
 require('dotenv').config();
 const mongoose = require('mongoose');
+const cookiePasrser = require('cookie-parser');
 
 // our own packages
 const notFoundMiddleware = require('./middlewares/not-found');
@@ -15,6 +16,7 @@ const authRouter = require('./routes/authRouter');
 const app = express();
 
 // middlewares
+app.use(cookiePasrser(process.env.SIGNED_COOKIE_SECRET));
 app.use(express.json());
 app.use(express.static('./public'));
 
