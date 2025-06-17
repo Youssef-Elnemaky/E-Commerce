@@ -23,6 +23,10 @@ const TokenSchema = new mongoose.Schema(
             ref: 'User',
             required: [true, 'user is required'],
         },
+        expiresAt: {
+            type: Date,
+            required: [true, 'expires at is required'],
+        },
     },
     { timestamps: true }
 );
