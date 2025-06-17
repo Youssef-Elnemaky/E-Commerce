@@ -32,4 +32,13 @@ const login = async (req, res) => {
     res.status(StatusCodes.OK).json({ status: 'success', user });
 };
 
-module.exports = { register, login };
+const refresh = async (req, res) => {
+    const { accessToken, refreshToken } = await authService.rotateRefreshToken(req);
+
+    // attach tokens to cookie
+    attachTokensToCookie(res, accessToken, refreshToken);
+
+    res.status(StatusCodes.OK).json({ status: 'success', msg: 'refreshed the token' });
+};
+
+module.exports = { register, login, refresh };
