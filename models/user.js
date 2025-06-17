@@ -24,6 +24,7 @@ const UserSchema = new mongoose.Schema(
             required: [true, 'password is required'],
             minlength: [8, 'password must be at least 8 characters'],
             maxlength: [64, 'password cannot exceed 64 characters'],
+            select: false,
         },
         role: {
             type: String,
@@ -43,5 +44,9 @@ UserSchema.pre('save', async function () {
         this.password = await bcrypt.hash(this.password, Number(process.env.SALT_ROUNDS));
     }
 });
+
+UserSchema.methods.checkPassword = async function (candidatePassword) {
+    return await bcrypt.compare(candidatePassword, this.password);
+};
 
 module.exports = mongoose.model('User', UserSchema);
