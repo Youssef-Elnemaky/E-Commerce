@@ -29,7 +29,11 @@ const register = async (req) => {
         expiresAt: new Date(Date.now() + ms(process.env.RT_COOKIE_LIFETIME)),
     });
 
-    return { user, accessToken, refreshToken };
+    return {
+        user: { userId: user._id, name: user.name, email: user.email, role: user.role },
+        accessToken,
+        refreshToken,
+    };
 };
 
 const login = async (req, email, password) => {
