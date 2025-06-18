@@ -93,7 +93,7 @@ const rotateRefreshToken = async (req) => {
 
     // if refresh token expired, throw an error
     if (!refreshToken) {
-        throw new UnauthenticatedError('1 expired/invalid refresh token, relogin');
+        throw new UnauthenticatedError('invalid refresh token, relogin');
     }
 
     // hash the token before querying the database
@@ -104,20 +104,20 @@ const rotateRefreshToken = async (req) => {
 
     // if token was not found, throw an error
     if (!token || token.expiresAt < Date.now() || !token.isValid) {
-        throw new UnauthorizedError('invalid refresh token, relogin');
+        throw new UnauthenticatedError('invalid refresh token, relogin');
     }
     // // require both IP and User-Agent to change before invalidating (to reduce false positives from dynamic IPs)
     if (req.ip !== token.ip && req.get('user-agent') !== token.userAgent) {
         // invalidate the old token
         token.isValid = false;
         await token.save();
-        throw new UnauthorizedError('invalid refresh token, relogin');
+        throw new UnauthenticatedError('invalid refresh token, relogin');
     }
 
     // get the user from the DB
     const user = await User.findById(token.user);
     if (!user) {
-        throw new UnauthorizedError('user deleted, relogin');
+        throw new UnauthenticatedError('user deleted, relogin');
     }
 
     // refresh token rotation (issue a new one, save it to DB, delete the old one, and a get a new access token)
