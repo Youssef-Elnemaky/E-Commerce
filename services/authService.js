@@ -70,7 +70,21 @@ const login = async (req, email, password) => {
         expiresAt: new Date(Date.now() + ms(process.env.RT_COOKIE_LIFETIME)),
     });
 
-    return { user, accessToken, refreshToken };
+    // safe guard: the user can only have N active sessions
+    // get all user tokens and sort them (newest first)
+    const userTokens = await Token.find({ user: user._id }).sort({ createdAt: -1 });
+
+    const MAX_SESSIONS = Number(process.env.MAX_SESSIONS);
+    // check if the number of sessions exceeded the MAX_SESSIONS value
+    if (userTokens.length >= MAX_SESSIONS) {
+        // slice userTokens to get the excess ones
+        const excessTokens = userTokens.slice(MAX_SESSIONS);
+        // remove excessTokens
+        await Token.deleteMany({ _id: { $in: excessTokens.map((token) => token._id) } });
+    }
+
+    const { _id, name, role } = user;
+    return { user: { _id, name, email, role }, accessToken, refreshToken };
 };
 
 const rotateRefreshToken = async (req) => {
