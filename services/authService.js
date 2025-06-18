@@ -92,21 +92,21 @@ const rotateRefreshToken = async (req) => {
     if (!token || token.expiresAt < Date.now() || !token.isValid) {
         throw new UnauthorizedError('invalid refresh token, relogin');
     }
-    // check if the ip and also the user-agent changed (as user might be using dynamic ip provided from their ISP we use AND)
+    // // require both IP and User-Agent to change before invalidating (to reduce false positives from dynamic IPs)
     if (req.ip !== token.ip && req.get('user-agent') !== token.userAgent) {
         // invalidate the old token
         token.isValid = false;
         await token.save();
         throw new UnauthorizedError('invalid refresh token, relogin');
     }
-    // refresh token rotation (issue a new one, save it to DB, delete the old one, and a get a new access token)
 
     // get the user from the DB
     const user = await User.findById(token.user);
     if (!user) {
-        throw UnauthorizedError('user deleted, relogin');
+        throw new UnauthorizedError('user deleted, relogin');
     }
 
+    // refresh token rotation (issue a new one, save it to DB, delete the old one, and a get a new access token)
     // issue a new refresh token and access token
     const newRefreshToken = await generateRefreshToken();
     const accessToken = await jwt.generateToken(
