@@ -41,4 +41,27 @@ const refresh = async (req, res) => {
     res.status(StatusCodes.OK).json({ status: 'success', msg: 'refreshed the token' });
 };
 
-module.exports = { register, login, refresh };
+const logout = async (req, res) => {
+    // call authService to logout by deleting the refresh token from the database.
+    await authService.logout(req);
+
+    // remove accessToken cookie
+    res.cookie('accessToken', 'logout', {
+        httpOnly: true, // prevents JS access on client (security)
+        secure: process.env.NODE_ENV === 'production', // HTTPS only in production
+        sameSite: 'Strict', // prevents CSRF in most cases
+        maxAge: 0,
+    });
+
+    // remove refreshToken cookie
+    res.cookie('refreshToken', 'logout', {
+        httpOnly: true, // prevents JS access on client (security)
+        secure: process.env.NODE_ENV === 'production', // HTTPS only in production
+        sameSite: 'Strict', // prevents CSRF in most cases
+        maxAge: 0,
+        signed: true,
+    });
+
+    res.status(StatusCodes.OK).json({ status: 'success', msg: 'logged out successfully' });
+};
+module.exports = { register, login, refresh, logout };

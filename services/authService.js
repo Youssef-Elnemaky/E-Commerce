@@ -144,4 +144,20 @@ const rotateRefreshToken = async (req) => {
     return { accessToken, refreshToken: newRefreshToken };
 };
 
-module.exports = { register, login, rotateRefreshToken };
+const logout = async (req) => {
+    // read access token from cookies
+    const accessToken = req.cookies.accessToken;
+
+    // check if acccess token cookie hasn't expired
+    if (!accessToken) {
+        throw new UnauthenticatedError('invalid access token');
+    }
+
+    // verify JWT token
+    const payload = await jwt.verifyToken(accessToken);
+
+    // delete refresh token from the database
+    await Token.deleteOne({ user: payload.userId });
+};
+
+module.exports = { register, login, rotateRefreshToken, logout };

@@ -9,4 +9,9 @@ const generateToken = async (payload, lifeTime) => {
     return token;
 };
 
-module.exports = { generateToken };
+const verifyToken = async (token) => {
+    const payload = await verifyJwt(token, process.env.JWT_SECRET);
+    return payload;
+};
+
+module.exports = { generateToken, verifyToken };
