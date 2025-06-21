@@ -1,0 +1,17 @@
+const express = require('express');
+const authenticate = require('../middlewares/authenticate');
+
+const {
+    getAllProducts,
+    createProduct,
+    getProduct,
+    updateProduct,
+    deleteProduct,
+} = require('../controllers/productController');
+
+const router = express.Router();
+
+router.route('/').get(getAllProducts).post([authenticate, createProduct]);
+router.route('/:id').get(getProduct).patch([authenticate, updateProduct]).delete([authenticate, deleteProduct]);
+
+module.exports = router;
