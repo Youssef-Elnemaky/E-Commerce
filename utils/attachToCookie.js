@@ -1,6 +1,6 @@
 const ms = require('ms');
 
-const attachTokensToCookie = (res, accessToken, refreshToken) => {
+const attachTokens = (res, accessToken, refreshToken) => {
     // attaching access token to cookie
     res.cookie('accessToken', accessToken, {
         httpOnly: true, // prevents JS access on client (security)
@@ -19,4 +19,13 @@ const attachTokensToCookie = (res, accessToken, refreshToken) => {
     });
 };
 
-module.exports = attachTokensToCookie;
+const attachSingle = (res, data, dataName = 'temp') => {
+    res.cookie(dataName, data, {
+        httpOnly: true, // prevents JS access on client (security)
+        secure: process.env.NODE_ENV === 'production', // HTTPS only in production
+        sameSite: 'Strict', // prevents CSRF in most cases
+        maxAge: ms(process.env.TEMP_IMAGE_TOKEN_LIFETIME),
+    });
+};
+
+module.exports = { attachTokens, attachSingle };
