@@ -13,6 +13,8 @@ const errorHandlerMiddleware = require('./middlewares/error-handler');
 // routers
 const authRouter = require('./routes/authRouter');
 const productRouter = require('./routes/productRouter');
+const uploadRouter = require('./routes/uploadRouter');
+
 const app = express();
 
 // middlewares
@@ -27,6 +29,7 @@ app.get('/api/v1', (req, res) => {
 
 app.use('/api/v1/auth', authRouter);
 app.use('/api/v1/products', productRouter);
+app.use('/api/v1/upload', uploadRouter);
 app.use(notFoundMiddleware);
 app.use(errorHandlerMiddleware);
 
