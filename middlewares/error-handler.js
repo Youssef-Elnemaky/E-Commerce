@@ -1,4 +1,6 @@
 const { StatusCodes } = require('http-status-codes');
+const multer = require('multer');
+
 const errorHandlerMiddleware = (err, req, res, next) => {
     // console.log(err);
     let customError = {
@@ -35,6 +37,21 @@ const errorHandlerMiddleware = (err, req, res, next) => {
     //check for JWT invalid token error
     if (err.name == 'JsonWebTokenError') {
         customError.statusCode = StatusCodes.UNAUTHORIZED;
+    }
+
+    // Multer errors
+    // File size
+    if (err.code === 'LIMIT_FILE_SIZE') {
+        customError.statusCode = StatusCodes.BAD_REQUEST;
+        customError.message += '. Max file size is 5 MB.';
+    }
+    // File type
+    if (err.message === 'Only image files are allowed') {
+        customError.statusCode = StatusCodes.BAD_REQUEST;
+    }
+    // Generic error for multer
+    if (err instanceof multer.MulterError) {
+        customError.statusCode = StatusCodes.BAD_REQUEST;
     }
 
     return res.status(customError.statusCode).json({ error: customError.message });
