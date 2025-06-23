@@ -3,6 +3,7 @@ const crudService = require('./crudService');
 const jwt = require('../utils/jwt');
 const imageService = require('./imageService');
 const { UnauthorizedError } = require('../errors');
+const uploadService = require('./uploadService');
 
 const createProduct = async (req, data) => {
     // read the token from cookies
@@ -32,10 +33,54 @@ const createProduct = async (req, data) => {
     return newProduct;
 };
 
+const updateProduct = async (req, productId, updateData) => {
+    // read the token from cookies
+    const imageToken = req.cookies.imageToken;
+
+    // If no image token, skip image logic and just update product
+    if (!imageToken) {
+        // update the product
+        return await crudService.updateOne(Product)(productId, updateData);
+    }
+
+    // verify the image token
+    const payload = await jwt.verifyToken(imageToken);
+    const { url, public_id, imageId } = payload;
+
+    // get uploaded image from DB
+    const image = await imageService.getImage(imageId);
+
+    // get the old image before updating the product
+    const product = await crudService.getOne(Product)(productId);
+    const { image: oldImageId, imagePublicId: oldImagePublicId } = product;
+
+    // update the product
+    Object.assign(product, {
+        ...updateData,
+        imageUrl: url,
+        imagePublicId: public_id,
+        image: imageId,
+    });
+
+    const newProduct = await product.save();
+
+    // marking the image as used to skip CRON job of removing unused images later on
+    image.isUsed = true;
+    await image.save();
+
+    // only delete if the image has changed. (cookie not cleared due to client/network issues)
+    if (oldImageId?.toString() !== imageId) {
+        await imageService.deleteImage(oldImageId);
+        await uploadService.removeFromCloudinary(oldImagePublicId);
+    }
+
+    return newProduct;
+};
+
 module.exports = {
     getAllProducts: crudService.getAll(Product),
     getProduct: crudService.getOne(Product),
-    updateProduct: crudService.updateOne(Product),
+    updateProduct,
     createProduct,
     deleteProduct: crudService.deleteOne(Product),
 };
