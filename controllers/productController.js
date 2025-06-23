@@ -13,7 +13,7 @@ exports.getProduct = async (req, res) => {
 };
 
 exports.createProduct = async (req, res) => {
-    const product = await productService.createProduct(req.body);
+    const product = await productService.createProduct(req, req.body);
     res.status(StatusCodes.CREATED).json({ status: 'success', product });
 };
 
