@@ -77,10 +77,21 @@ const updateProduct = async (req, productId, updateData) => {
     return newProduct;
 };
 
+const deleteProduct = async (productId) => {
+    const product = await crudService.getOne(Product)(productId);
+
+    // delete the image from the DB
+    await imageService.deleteImage(product.image);
+    // delete the image from cloudinary
+    await uploadService.removeFromCloudinary(product.imagePublicId);
+
+    await product.deleteOne();
+};
+
 module.exports = {
     getAllProducts: crudService.getAll(Product),
     getProduct: crudService.getOne(Product),
     updateProduct,
     createProduct,
-    deleteProduct: crudService.deleteOne(Product),
+    deleteProduct,
 };
