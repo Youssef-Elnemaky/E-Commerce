@@ -14,11 +14,13 @@ exports.getProduct = async (req, res) => {
 
 exports.createProduct = async (req, res) => {
     const product = await productService.createProduct(req, req.body);
+    res.clearCookie('imageToken'); // clear the cookie after a successful creation
     res.status(StatusCodes.CREATED).json({ status: 'success', product });
 };
 
 exports.updateProduct = async (req, res) => {
-    const updatedProduct = await productService.updateProduct(req.params.id, req.body);
+    const updatedProduct = await productService.updateProduct(req, req.params.id, req.body);
+    res.clearCookie('imageToken'); // clear the cookie after a successful update
     res.status(StatusCodes.OK).json({ status: 'success', updatedProduct });
 };
 
