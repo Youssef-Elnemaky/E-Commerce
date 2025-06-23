@@ -39,8 +39,12 @@ const ProductSchema = new mongoose.Schema(
             type: Boolean,
             default: false,
         },
-        image: String,
-        imageId: String,
+        image: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Image',
+        },
+        imageUrl: String,
+        imagePublicId: String,
         tags: [String],
     },
     { timestamps: true }
