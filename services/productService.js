@@ -24,7 +24,9 @@ const createProduct = async (req, data) => {
     data.imageUrl = url;
     data.imagePublicId = public_id;
     data.image = imageId;
+
     // create the product
+    data.createdBy = req.user.userId;
     const newProduct = await crudService.createOne(Product)(data);
 
     // marking the image as used to skip CRON job of removing unused images later on
