@@ -10,7 +10,7 @@ const authenticate = async (req, res, next) => {
 
     const payload = await jwt.verifyToken(accessToken);
 
-    req.user = { name: payload.name, userId: payload.userId };
+    req.user = { name: payload.name, userId: payload.userId, userRole: payload.userRole };
     next();
 };
 

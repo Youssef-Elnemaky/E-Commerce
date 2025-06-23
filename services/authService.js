@@ -12,7 +12,7 @@ const register = async (req) => {
 
     // access token and refresh token generation
     const accessToken = await jwt.generateToken(
-        { name: user.name, userId: user._id },
+        { name: user.name, userId: user._id, userRole: user.role },
         ms(process.env.ACCESS_TOKEN_LIFETIME) / 1000
     );
 
@@ -53,7 +53,7 @@ const login = async (req, email, password) => {
 
     // access token and refresh token generation
     const accessToken = await jwt.generateToken(
-        { name: user.name, userId: user._id },
+        { name: user.name, userId: user._id, userRole: user.role },
         ms(process.env.ACCESS_TOKEN_LIFETIME) / 1000
     );
 
@@ -124,7 +124,7 @@ const rotateRefreshToken = async (req) => {
     // issue a new refresh token and access token
     const newRefreshToken = await generateRefreshToken();
     const accessToken = await jwt.generateToken(
-        { name: user.name, userId: user._id },
+        { name: user.name, userId: user._id, userRole: user.role },
         ms(process.env.ACCESS_TOKEN_LIFETIME) / 1000
     );
     // hash and store it to the DB
