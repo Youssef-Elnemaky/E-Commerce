@@ -37,3 +37,7 @@ exports.uploadToLocal = async (file, destinationFolder = 'uploads') => {
         path: targetPath,
     };
 };
+
+exports.removeFromClouidnary = async (public_id) => {
+    await cloudinary.uploader.destroy(public_id);
+};
