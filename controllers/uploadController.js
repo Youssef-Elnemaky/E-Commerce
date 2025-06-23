@@ -21,9 +21,6 @@ const uploadImage = async (req, res) => {
     // attaching upload result token to a cookie
     attachToCookie.attachSingle(res, uploadResultToken, 'imageToken');
 
-    // tracking the image in the DB
-    imageService.createImage(uploadResult);
-
     res.status(StatusCodes.OK).json({ status: 'success', msg: 'image uploaded' });
 };
 

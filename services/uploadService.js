@@ -3,16 +3,20 @@ const path = require('path');
 const cloudinary = require('../config/cloudinary');
 const slugify = require('slugify');
 const crypto = require('crypto');
+const imageService = require('./imageService');
 
 exports.uploadToCloudinary = (buffer, folder = 'uploads') => {
     return new Promise((resolve, reject) => {
         cloudinary.uploader
-            .upload_stream({ folder }, (error, result) => {
+            .upload_stream({ folder }, async (error, result) => {
                 if (error) return reject(error);
-                resolve({
-                    url: result.secure_url,
-                    public_id: result.public_id,
-                });
+                try {
+                    const { secure_url: url, public_id } = result;
+                    const image = await imageService.createImage({ url, public_id });
+                    resolve({ url, public_id, imageId: image._id });
+                } catch (err) {
+                    reject(err);
+                }
             })
             .end(buffer);
     });
