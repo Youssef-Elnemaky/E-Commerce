@@ -38,6 +38,6 @@ exports.uploadToLocal = async (file, destinationFolder = 'uploads') => {
     };
 };
 
-exports.removeFromClouidnary = async (public_id) => {
+exports.removeFromCloudinary = async (public_id) => {
     await cloudinary.uploader.destroy(public_id);
 };
