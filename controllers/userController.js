@@ -27,4 +27,14 @@ const deleteUser = async (req, res) => {
     res.status(StatusCodes.NO_CONTENT).json({ status: 'success', msg: 'delete user route' });
 };
 
-module.exports = { getAllUsers, createUser, getUser, updateUser, deleteUser };
+const getMe = async (req, res) => {
+    const user = await userService.getMe(req);
+    res.status(StatusCodes.OK).json({ status: 'success', user });
+};
+
+const updateMe = async (req, res) => {
+    const user = await userService.updateMe(req, req.body);
+    res.status(StatusCodes.OK).json({ status: 'success', user });
+};
+
+module.exports = { getAllUsers, createUser, getUser, updateUser, deleteUser, getMe, updateMe };
