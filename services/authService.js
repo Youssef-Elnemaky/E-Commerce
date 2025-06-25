@@ -5,6 +5,7 @@ const Token = require('../models/token');
 const jwt = require('../utils/jwt');
 const { generateRefreshToken, hashToken } = require('../utils/tokenUtil');
 const { UnauthenticatedError, BadRequestError, UnauthorizedError } = require('../errors');
+const emailService = require('./emailService');
 
 const register = async (req) => {
     // creating a user in the database
@@ -28,6 +29,9 @@ const register = async (req) => {
         user: user._id,
         expiresAt: new Date(Date.now() + ms(process.env.RT_COOKIE_LIFETIME)),
     });
+
+    // send welcome email
+    await emailService.sendWelcomeEmail(user.email, user.name);
 
     return {
         user: { userId: user._id, name: user.name, email: user.email, role: user.role },
