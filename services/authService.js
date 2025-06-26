@@ -3,9 +3,10 @@ const ms = require('ms');
 const User = require('../models/user');
 const Token = require('../models/token');
 const jwt = require('../utils/jwt');
-const { generateRefreshToken, hashToken } = require('../utils/tokenUtil');
+const { generateRandomToken, hashToken } = require('../utils/tokenUtil');
 const { UnauthenticatedError, BadRequestError, UnauthorizedError } = require('../errors');
 const emailService = require('./emailService');
+const userService = require('./userService');
 
 const register = async (req) => {
     // creating a user in the database
@@ -18,7 +19,7 @@ const register = async (req) => {
     );
 
     // generate the refresh token as random bytes
-    const refreshToken = await generateRefreshToken();
+    const refreshToken = await generateRandomToken();
     // hash the refresh token before saving to the database
     const hashedRefreshToken = await hashToken(refreshToken);
     // saving refresh token to the database
@@ -62,7 +63,7 @@ const login = async (req, email, password) => {
     );
 
     // generate the refresh token as random bytes
-    const refreshToken = await generateRefreshToken();
+    const refreshToken = await generateRandomToken();
     // hash the refresh token before saving to the database
     const hashedRefreshToken = await hashToken(refreshToken);
     // saving refresh token to the database
@@ -126,7 +127,7 @@ const rotateRefreshToken = async (req) => {
 
     // refresh token rotation (issue a new one, save it to DB, delete the old one, and a get a new access token)
     // issue a new refresh token and access token
-    const newRefreshToken = await generateRefreshToken();
+    const newRefreshToken = await generateRandomToken();
     const accessToken = await jwt.generateToken(
         { name: user.name, userId: user._id, userRole: user.role },
         ms(process.env.ACCESS_TOKEN_LIFETIME) / 1000
@@ -164,4 +165,21 @@ const logout = async (req) => {
     await Token.deleteOne({ user: payload.userId });
 };
 
-module.exports = { register, login, rotateRefreshToken, logout };
+const forgotPassword = async (email) => {
+    const user = (await userService.getAllUsers({}, { email }))[0];
+    if (!user) {
+        return;
+    }
+    const resetToken = await generateRandomToken();
+    const hashedResetToken = await hashToken(resetToken);
+
+    user.resetToken = hashedResetToken;
+    user.resetTokenExpiresAt = Date.now() + 10 * 60 * 1000;
+    await user.save();
+
+    const resetLink = `${process.env.FRONTEND_HOST}/reset-password?token=${resetToken}`;
+
+    await emailService.sendForgotPasswordEmail(email, user.name, resetLink);
+};
+
+module.exports = { register, login, rotateRefreshToken, logout, forgotPassword };

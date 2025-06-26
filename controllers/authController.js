@@ -64,4 +64,15 @@ const logout = async (req, res) => {
 
     res.status(StatusCodes.OK).json({ status: 'success', msg: 'logged out successfully' });
 };
-module.exports = { register, login, refresh, logout };
+
+const forgotPassword = async (req, res) => {
+    const { email } = req.body;
+    if (!email) {
+        throw new BadRequestError('email must be provided');
+    }
+
+    await authService.forgotPassword(email);
+    res.status(StatusCodes.OK).json({ status: 'success', msg: 'forgot password route' });
+};
+
+module.exports = { register, login, refresh, logout, forgotPassword };
