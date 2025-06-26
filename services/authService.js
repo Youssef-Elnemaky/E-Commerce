@@ -174,7 +174,7 @@ const forgotPassword = async (email) => {
     const hashedResetToken = await hashToken(resetToken);
 
     user.resetToken = hashedResetToken;
-    user.resetTokenExpiresAt = Date.now() + 10 * 60 * 1000;
+    user.resetTokenExpiresAt = Date.now() + 10 * 60 * 1000; // after 10 minutes
     await user.save();
 
     const resetLink = `${process.env.FRONTEND_HOST}/reset-password?token=${resetToken}`;
@@ -182,4 +182,52 @@ const forgotPassword = async (email) => {
     await emailService.sendForgotPasswordEmail(email, user.name, resetLink);
 };
 
-module.exports = { register, login, rotateRefreshToken, logout, forgotPassword };
+const resetPassword = async (req, token, newPassword) => {
+    // hash the token
+    const hashedToken = await hashToken(token);
+    // get the user from the DB.
+    const user = (await userService.getAllUsers({}, { resetToken: hashedToken }))[0];
+
+    // check if the user exists (valid token)
+    if (!user) throw new BadRequestError('invalid reset token');
+    // check if the token hasn't expired
+    if (user.resetTokenExpiresAt < Date.now()) throw new BadRequestError('expired reset token');
+
+    // updating the user password
+    user.password = newPassword;
+    // making sure that the reset token cannot be used again
+    user.resetToken = undefined;
+    user.resetTokenExpiresAt = undefined;
+
+    // leave 5 seconds window for the data base to save as
+    // we don't want our new access token iat be before our passwordChanged.
+    user.passwordChangedAt = Date.now() - 5000;
+    await user.save();
+
+    // access token and refresh token generation
+    const accessToken = await jwt.generateToken(
+        { name: user.name, userId: user._id, userRole: user.role },
+        ms(process.env.ACCESS_TOKEN_LIFETIME) / 1000
+    );
+
+    // remove all refresh tokens related to that user from the DB
+    await Token.deleteMany({ user: user.id });
+
+    // generate new refresh token as random bytes
+    const refreshToken = await generateRandomToken();
+    // hash the refresh token before saving to the database
+    const hashedRefreshToken = await hashToken(refreshToken);
+    // saving refresh token to the database
+    await Token.create({
+        token: hashedRefreshToken,
+        ip: req.ip,
+        userAgent: req.get('user-agent'),
+        user: user._id,
+        expiresAt: new Date(Date.now() + ms(process.env.RT_COOKIE_LIFETIME)),
+    });
+
+    const { _id, name, email, role } = user;
+    return { user: { _id, name, email, role }, accessToken, refreshToken };
+};
+
+module.exports = { register, login, rotateRefreshToken, logout, forgotPassword, resetPassword };

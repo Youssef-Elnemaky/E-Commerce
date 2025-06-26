@@ -72,7 +72,25 @@ const forgotPassword = async (req, res) => {
     }
 
     await authService.forgotPassword(email);
-    res.status(StatusCodes.OK).json({ status: 'success', msg: 'forgot password route' });
+    res.status(StatusCodes.OK).json({ status: 'success', msg: 'a reset password email was sent' });
 };
 
-module.exports = { register, login, refresh, logout, forgotPassword };
+const resetPassword = async (req, res) => {
+    const token = req.query.token;
+    if (!token) {
+        throw new BadRequestError('token was not passed');
+    }
+    const newPassword = req.body.newPassword;
+    if (!newPassword) {
+        throw new BadRequestError('new password was not passed');
+    }
+
+    const { user, accessToken, refreshToken } = await authService.resetPassword(req, token, newPassword);
+
+    // attach tokens to cookie
+    attachToCookie.attachTokens(res, accessToken, refreshToken);
+
+    res.status(StatusCodes.OK).json({ status: 'success', user });
+};
+
+module.exports = { register, login, refresh, logout, forgotPassword, resetPassword };
