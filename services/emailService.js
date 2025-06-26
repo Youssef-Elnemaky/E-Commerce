@@ -4,7 +4,7 @@ const path = require('path');
 const handlebars = require('handlebars');
 
 const transporter = nodemailer.createTransport({
-    host: 'smtp.ethereal.email',
+    host: process.env.SMPT_HOST,
     port: 587,
     auth: {
         user: process.env.SMTP_USER,
