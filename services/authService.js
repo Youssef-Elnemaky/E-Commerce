@@ -150,19 +150,18 @@ const rotateRefreshToken = async (req) => {
 };
 
 const logout = async (req) => {
-    // read access token from cookies
-    const accessToken = req.cookies.accessToken;
+    // read refresh token from cookies
+    const refreshToken = req.signedCookies.refreshToken;
 
-    // check if acccess token cookie hasn't expired
-    if (!accessToken) {
-        throw new UnauthenticatedError('invalid access token');
+    // check if refreshToken token cookie hasn't expired
+    if (!refreshToken) {
+        throw new UnauthenticatedError('invalid refresh token');
     }
 
-    // verify JWT token
-    const payload = await jwt.verifyToken(accessToken);
+    const hashedRefreshToken = await hashToken(refreshToken);
 
     // delete refresh token from the database
-    await Token.deleteOne({ user: payload.userId });
+    await Token.deleteOne({ token: hashedRefreshToken });
 };
 
 const forgotPassword = async (email) => {
