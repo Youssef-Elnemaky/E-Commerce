@@ -1,6 +1,6 @@
 const User = require('../models/user');
 const crudService = require('../services/crudService');
-const { UnauthenticatedError, BadRequestError } = require('../errors');
+const { UnauthenticatedError, BadRequestError, NotFoundError } = require('../errors');
 
 const getMe = async (req) => {
     const userId = req.user.userId;
@@ -18,12 +18,19 @@ const updateMe = async (req, updateData) => {
     return user;
 };
 
+const getUserWithPassword = async (userId) => {
+    const user = await User.findById(userId).select('+password');
+    if (!user) throw new NotFoundError(`user with id: ${userId} not found`);
+    return user;
+};
+
 module.exports = {
     getAllUsers: crudService.getAll(User),
     createUser: crudService.createOne(User),
     getUser: crudService.getOne(User),
     updateUser: crudService.updateOne(User),
     deleteUser: crudService.deleteOne(User),
+    getUserWithPassword,
     getMe,
     updateMe,
 };
