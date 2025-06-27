@@ -10,11 +10,12 @@ const userService = require('./userService');
 
 const register = async (req) => {
     // creating a user in the database
-    const user = await User.create(req.body);
+    const { name, email, password } = req.body;
+    const user = await userService.createUser({ name, email, password });
 
     // access token and refresh token generation
     const accessToken = await jwt.generateToken(
-        { name: user.name, userId: user._id, userRole: user.role },
+        { name: user.name, userId: user._id, userRole: user.role, tokenVersion: 0 },
         ms(process.env.ACCESS_TOKEN_LIFETIME) / 1000
     );
 
@@ -43,7 +44,7 @@ const register = async (req) => {
 
 const login = async (req, email, password) => {
     // query the database with the passed email
-    const user = await User.findOne({ email }).select('+password');
+    const user = await userService.getUserAndSelect({ email }, '+password +tokenVersion');
 
     // generic error so we don't leak that email is not stored in the database or not
     if (!user) {
@@ -58,7 +59,7 @@ const login = async (req, email, password) => {
 
     // access token and refresh token generation
     const accessToken = await jwt.generateToken(
-        { name: user.name, userId: user._id, userRole: user.role },
+        { name: user.name, userId: user._id, userRole: user.role, tokenVersion: user.tokenVersion },
         ms(process.env.ACCESS_TOKEN_LIFETIME) / 1000
     );
 
@@ -120,7 +121,7 @@ const rotateRefreshToken = async (req) => {
     }
 
     // get the user from the DB
-    const user = await User.findById(token.user);
+    const user = await userService.getUserAndSelect({ _id: token.user }, '+tokenVersion');
     if (!user) {
         throw new UnauthenticatedError('user deleted, relogin');
     }
@@ -129,7 +130,7 @@ const rotateRefreshToken = async (req) => {
     // issue a new refresh token and access token
     const newRefreshToken = await generateRandomToken();
     const accessToken = await jwt.generateToken(
-        { name: user.name, userId: user._id, userRole: user.role },
+        { name: user.name, userId: user._id, userRole: user.role, tokenVersion: user.tokenVersion },
         ms(process.env.ACCESS_TOKEN_LIFETIME) / 1000
     );
     // hash and store it to the DB
@@ -185,7 +186,7 @@ const resetPassword = async (req, token, newPassword) => {
     // hash the token
     const hashedToken = await hashToken(token);
     // get the user from the DB.
-    const user = (await userService.getAllUsers({}, { resetToken: hashedToken }))[0];
+    const user = await userService.getUserAndSelect({ resetToken: hashedToken }, (select = '+tokenVersion'));
 
     // check if the user exists (valid token)
     if (!user) throw new BadRequestError('invalid reset token');
@@ -194,7 +195,7 @@ const resetPassword = async (req, token, newPassword) => {
 
     // access token and refresh token generation
     const accessToken = await jwt.generateToken(
-        { name: user.name, userId: user._id, userRole: user.role },
+        { name: user.name, userId: user._id, userRole: user.role, tokenVersion: user.tokenVersion + 1 },
         ms(process.env.ACCESS_TOKEN_LIFETIME) / 1000
     );
 
@@ -220,9 +221,9 @@ const resetPassword = async (req, token, newPassword) => {
     user.resetToken = undefined;
     user.resetTokenExpiresAt = undefined;
 
-    // leave 5 seconds window for the data base to save as
-    // we don't want our new access token iat be before our passwordChanged.
-    user.passwordChangedAt = Date.now() - 5000;
+    // update tokenVersion
+    console.log(`tokenVersion is ${user.tokenVersion}`);
+    user.tokenVersion = user.tokenVersion + 1;
     await user.save();
 
     const { _id, name, email, role } = user;
@@ -230,7 +231,7 @@ const resetPassword = async (req, token, newPassword) => {
 };
 
 const updatePassword = async (req, currentPassword, newPassword) => {
-    const user = await userService.getUserWithPassword(req.user.userId);
+    const user = await userService.getUserAndSelect({ _id: req.user.userId }, '+password +tokenVersion');
 
     const isPasswordCorrect = await user.checkPassword(currentPassword);
     if (!isPasswordCorrect) {
@@ -239,7 +240,7 @@ const updatePassword = async (req, currentPassword, newPassword) => {
 
     // access token and refresh token generation
     const accessToken = await jwt.generateToken(
-        { name: user.name, userId: user._id, userRole: user.role },
+        { name: user.name, userId: user._id, userRole: user.role, tokenVersion: user.tokenVersion + 1 },
         ms(process.env.ACCESS_TOKEN_LIFETIME) / 1000
     );
 
@@ -265,9 +266,8 @@ const updatePassword = async (req, currentPassword, newPassword) => {
     user.resetToken = undefined;
     user.resetTokenExpiresAt = undefined;
 
-    // leave 5 seconds window for the data base to save as
-    // we don't want our new access token iat be before our passwordChanged.
-    user.passwordChangedAt = Date.now() - 5000;
+    // update token version
+    user.tokenVersion = user.tokenVersion + 1;
     await user.save();
     const { _id, name, email, role } = user;
     return { user: { _id, name, email, role }, accessToken, refreshToken };

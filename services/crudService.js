@@ -44,4 +44,12 @@ const deleteOne = (Model) => async (id) => {
     return deletedDoc;
 };
 
-module.exports = { getAll, createOne, getOne, updateOne, deleteOne };
+const getOneAndSelect = (Model) => async (query, select) => {
+    let queryDoc = Model.findOne(query);
+    if (select) queryDoc.select(select);
+    const doc = queryDoc;
+    if (!doc) throw new NotFoundError(`${Model.modelName} with query ${query} not found`);
+    return doc;
+};
+
+module.exports = { getAll, createOne, getOne, updateOne, deleteOne, getOneAndSelect };

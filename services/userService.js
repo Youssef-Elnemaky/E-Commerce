@@ -18,9 +18,8 @@ const updateMe = async (req, updateData) => {
     return user;
 };
 
-const getUserWithPassword = async (userId) => {
-    const user = await User.findById(userId).select('+password');
-    if (!user) throw new NotFoundError(`user with id: ${userId} not found`);
+const getUserAndSelect = async (query, select) => {
+    const user = crudService.getOneAndSelect(User)(query, select);
     return user;
 };
 
@@ -30,7 +29,7 @@ module.exports = {
     getUser: crudService.getOne(User),
     updateUser: crudService.updateOne(User),
     deleteUser: crudService.deleteOne(User),
-    getUserWithPassword,
+    getUserAndSelect,
     getMe,
     updateMe,
 };

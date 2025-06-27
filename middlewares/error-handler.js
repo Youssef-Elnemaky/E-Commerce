@@ -2,7 +2,7 @@ const { StatusCodes } = require('http-status-codes');
 const multer = require('multer');
 
 const errorHandlerMiddleware = (err, req, res, next) => {
-    // console.log(err);
+    console.log(err);
     let customError = {
         message: err.message || 'Something went wrong',
         statusCode: err.statusCode || StatusCodes.INTERNAL_SERVER_ERROR,
