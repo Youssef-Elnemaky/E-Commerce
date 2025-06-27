@@ -192,6 +192,28 @@ const resetPassword = async (req, token, newPassword) => {
     // check if the token hasn't expired
     if (user.resetTokenExpiresAt < Date.now()) throw new BadRequestError('expired reset token');
 
+    // access token and refresh token generation
+    const accessToken = await jwt.generateToken(
+        { name: user.name, userId: user._id, userRole: user.role },
+        ms(process.env.ACCESS_TOKEN_LIFETIME) / 1000
+    );
+
+    // remove all refresh tokens related to that user from the DB
+    await Token.deleteMany({ user: user.id });
+
+    // generate new refresh token as random bytes
+    const refreshToken = await generateRandomToken();
+    // hash the refresh token before saving to the database
+    const hashedRefreshToken = await hashToken(refreshToken);
+    // saving refresh token to the database
+    await Token.create({
+        token: hashedRefreshToken,
+        ip: req.ip,
+        userAgent: req.get('user-agent'),
+        user: user._id,
+        expiresAt: new Date(Date.now() + ms(process.env.RT_COOKIE_LIFETIME)),
+    });
+
     // updating the user password
     user.password = newPassword;
     // making sure that the reset token cannot be used again
@@ -202,6 +224,18 @@ const resetPassword = async (req, token, newPassword) => {
     // we don't want our new access token iat be before our passwordChanged.
     user.passwordChangedAt = Date.now() - 5000;
     await user.save();
+
+    const { _id, name, email, role } = user;
+    return { user: { _id, name, email, role }, accessToken, refreshToken };
+};
+
+const updatePassword = async (req, currentPassword, newPassword) => {
+    const user = await userService.getUserWithPassword(req.user.userId);
+
+    const isPasswordCorrect = await user.checkPassword(currentPassword);
+    if (!isPasswordCorrect) {
+        throw new UnauthenticatedError('invalid credentials');
+    }
 
     // access token and refresh token generation
     const accessToken = await jwt.generateToken(
@@ -225,8 +259,18 @@ const resetPassword = async (req, token, newPassword) => {
         expiresAt: new Date(Date.now() + ms(process.env.RT_COOKIE_LIFETIME)),
     });
 
+    // updating the user password
+    user.password = newPassword;
+    // making sure that the reset token cannot be used again
+    user.resetToken = undefined;
+    user.resetTokenExpiresAt = undefined;
+
+    // leave 5 seconds window for the data base to save as
+    // we don't want our new access token iat be before our passwordChanged.
+    user.passwordChangedAt = Date.now() - 5000;
+    await user.save();
     const { _id, name, email, role } = user;
     return { user: { _id, name, email, role }, accessToken, refreshToken };
 };
 
-module.exports = { register, login, rotateRefreshToken, logout, forgotPassword, resetPassword };
+module.exports = { register, login, rotateRefreshToken, logout, forgotPassword, resetPassword, updatePassword };

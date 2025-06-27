@@ -93,4 +93,19 @@ const resetPassword = async (req, res) => {
     res.status(StatusCodes.OK).json({ status: 'success', user });
 };
 
-module.exports = { register, login, refresh, logout, forgotPassword, resetPassword };
+const updatePassword = async (req, res) => {
+    const { currentPassword, newPassword } = req.body;
+    const { userId } = req.user;
+
+    if (!currentPassword || !newPassword) {
+        throw new BadRequestError('both current password and new password are required');
+    }
+
+    const { user, accessToken, refreshToken } = await authService.updatePassword(req, currentPassword, newPassword);
+
+    // attach tokens to cookie
+    attachToCookie.attachTokens(res, accessToken, refreshToken);
+
+    res.status(StatusCodes.OK).json({ status: 'success', user });
+};
+module.exports = { register, login, refresh, logout, forgotPassword, resetPassword, updatePassword };
