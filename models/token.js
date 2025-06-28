@@ -31,4 +31,6 @@ const TokenSchema = new mongoose.Schema(
     { timestamps: true }
 );
 
+TokenSchema.index({ token: 1 });
+
 module.exports = mongoose.model('Token', TokenSchema);
