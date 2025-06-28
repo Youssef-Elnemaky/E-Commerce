@@ -8,9 +8,8 @@ const { UnauthenticatedError, BadRequestError, UnauthorizedError } = require('..
 const emailService = require('./emailService');
 const userService = require('./userService');
 
-const register = async (req) => {
+const register = async (name, email, password, ip, userAgent) => {
     // creating a user in the database
-    const { name, email, password } = req.body;
     const user = await userService.createUser({ name, email, password });
 
     // access token and refresh token generation
@@ -26,8 +25,8 @@ const register = async (req) => {
     // saving refresh token to the database
     await Token.create({
         token: hashedRefreshToken,
-        ip: req.ip,
-        userAgent: req.get('user-agent'),
+        ip,
+        userAgent,
         user: user._id,
         expiresAt: new Date(Date.now() + ms(process.env.RT_COOKIE_LIFETIME)),
     });
@@ -42,7 +41,7 @@ const register = async (req) => {
     };
 };
 
-const login = async (req, email, password) => {
+const login = async (email, password, ip, userAgent) => {
     // query the database with the passed email
     const user = await userService.getUserAndSelect({ email }, '+password +tokenVersion');
 
@@ -70,8 +69,8 @@ const login = async (req, email, password) => {
     // saving refresh token to the database
     await Token.create({
         token: hashedRefreshToken,
-        ip: req.ip,
-        userAgent: req.get('user-agent'),
+        ip,
+        userAgent,
         user: user._id,
         expiresAt: new Date(Date.now() + ms(process.env.RT_COOKIE_LIFETIME)),
     });
@@ -93,15 +92,7 @@ const login = async (req, email, password) => {
     return { user: { _id, name, email, role }, accessToken, refreshToken };
 };
 
-const rotateRefreshToken = async (req) => {
-    // read refresh token from cookies
-    const refreshToken = req.signedCookies.refreshToken;
-
-    // if refresh token expired, throw an error
-    if (!refreshToken) {
-        throw new UnauthenticatedError('invalid refresh token, relogin');
-    }
-
+const rotateRefreshToken = async (refreshToken, ip, userAgent) => {
     // hash the token before querying the database
     const hashedRefreshToken = await hashToken(refreshToken);
 
@@ -113,7 +104,7 @@ const rotateRefreshToken = async (req) => {
         throw new UnauthenticatedError('invalid refresh token, relogin');
     }
     // // require both IP and User-Agent to change before invalidating (to reduce false positives from dynamic IPs)
-    if (req.ip !== token.ip && req.get('user-agent') !== token.userAgent) {
+    if (ip !== token.ip && userAgent !== token.userAgent) {
         // invalidate the old token
         token.isValid = false;
         await token.save();
@@ -138,8 +129,8 @@ const rotateRefreshToken = async (req) => {
 
     await Token.create({
         token: hashedNewRefreshToken,
-        ip: req.ip,
-        userAgent: req.get('user-agent'),
+        ip,
+        userAgent,
         user: user.id,
         expiresAt: new Date(Date.now() + ms(process.env.RT_COOKIE_LIFETIME)),
     });
@@ -150,15 +141,7 @@ const rotateRefreshToken = async (req) => {
     return { accessToken, refreshToken: newRefreshToken };
 };
 
-const logout = async (req) => {
-    // read refresh token from cookies
-    const refreshToken = req.signedCookies.refreshToken;
-
-    // check if refreshToken token cookie hasn't expired
-    if (!refreshToken) {
-        throw new UnauthenticatedError('invalid refresh token');
-    }
-
+const logout = async (refreshToken) => {
     const hashedRefreshToken = await hashToken(refreshToken);
 
     // delete refresh token from the database
@@ -182,7 +165,7 @@ const forgotPassword = async (email) => {
     await emailService.sendForgotPasswordEmail(email, user.name, resetLink);
 };
 
-const resetPassword = async (req, token, newPassword) => {
+const resetPassword = async (token, ip, userAgent, newPassword) => {
     // hash the token
     const hashedToken = await hashToken(token);
     // get the user from the DB.
@@ -209,8 +192,8 @@ const resetPassword = async (req, token, newPassword) => {
     // saving refresh token to the database
     await Token.create({
         token: hashedRefreshToken,
-        ip: req.ip,
-        userAgent: req.get('user-agent'),
+        ip,
+        userAgent,
         user: user._id,
         expiresAt: new Date(Date.now() + ms(process.env.RT_COOKIE_LIFETIME)),
     });
@@ -230,8 +213,8 @@ const resetPassword = async (req, token, newPassword) => {
     return { user: { _id, name, email, role }, accessToken, refreshToken };
 };
 
-const updatePassword = async (req, currentPassword, newPassword) => {
-    const user = await userService.getUserAndSelect({ _id: req.user.userId }, '+password +tokenVersion');
+const updatePassword = async (userId, ip, userAgent, currentPassword, newPassword) => {
+    const user = await userService.getUserAndSelect({ _id: userId }, '+password +tokenVersion');
 
     const isPasswordCorrect = await user.checkPassword(currentPassword);
     if (!isPasswordCorrect) {
@@ -254,8 +237,8 @@ const updatePassword = async (req, currentPassword, newPassword) => {
     // saving refresh token to the database
     await Token.create({
         token: hashedRefreshToken,
-        ip: req.ip,
-        userAgent: req.get('user-agent'),
+        ip,
+        userAgent,
         user: user._id,
         expiresAt: new Date(Date.now() + ms(process.env.RT_COOKIE_LIFETIME)),
     });

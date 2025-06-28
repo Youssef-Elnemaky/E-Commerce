@@ -1,12 +1,15 @@
 const { StatusCodes } = require('http-status-codes');
-const { BadRequestError } = require('../errors');
+const { BadRequestError, UnauthenticatedError } = require('../errors');
 
 const authService = require('../services/authService');
 const attachToCookie = require('../utils/attachToCookie');
 
 const register = async (req, res) => {
     // registering the user
-    const { user, accessToken, refreshToken } = await authService.register(req);
+    const { name, email, password } = req.body;
+    const ip = req.ip;
+    const userAgent = req.get('user-agent');
+    const { user, accessToken, refreshToken } = await authService.register(name, email, password, ip, userAgent);
 
     // attach tokens to cookie
     attachToCookie.attachTokens(res, accessToken, refreshToken);
@@ -16,6 +19,8 @@ const register = async (req, res) => {
 
 const login = async (req, res) => {
     const { email, password } = req.body;
+    const ip = req.ip;
+    const userAgent = req.get('user-agent');
 
     // check if both email & password are passed or not
     if (!email || !password) {
@@ -23,7 +28,7 @@ const login = async (req, res) => {
     }
 
     // logging in the user
-    const { user, accessToken, refreshToken } = await authService.login(req, email, password);
+    const { user, accessToken, refreshToken } = await authService.login(email, password, ip, userAgent);
 
     // attach tokens to cookie
     attachToCookie.attachTokens(res, accessToken, refreshToken);
@@ -33,7 +38,17 @@ const login = async (req, res) => {
 };
 
 const refresh = async (req, res) => {
-    const { accessToken, refreshToken } = await authService.rotateRefreshToken(req);
+    // read refresh token from cookies
+    const currentRefreshToken = req.signedCookies.refreshToken;
+    const ip = req.ip;
+    const userAgent = req.get('user-agent');
+
+    // if refresh token expired, throw an error
+    if (!currentRefreshToken) {
+        throw new UnauthenticatedError('invalid refresh token, relogin');
+    }
+
+    const { accessToken, refreshToken } = await authService.rotateRefreshToken(currentRefreshToken, ip, userAgent);
 
     // attach tokens to cookie
     attachToCookie.attachTokens(res, accessToken, refreshToken);
@@ -42,8 +57,16 @@ const refresh = async (req, res) => {
 };
 
 const logout = async (req, res) => {
+    // read refresh token from cookies
+    const refreshToken = req.signedCookies.refreshToken;
+
+    // check if refreshToken token cookie hasn't expired
+    if (!refreshToken) {
+        throw new UnauthenticatedError('invalid refresh token');
+    }
+
     // call authService to logout by deleting the refresh token from the database.
-    await authService.logout(req);
+    await authService.logout(refreshToken);
 
     // remove accessToken cookie
     res.cookie('accessToken', 'logout', {
@@ -84,8 +107,9 @@ const resetPassword = async (req, res) => {
     if (!newPassword) {
         throw new BadRequestError('new password was not passed');
     }
-
-    const { user, accessToken, refreshToken } = await authService.resetPassword(req, token, newPassword);
+    const ip = req.ip;
+    const userAgent = req.get('user-agent');
+    const { user, accessToken, refreshToken } = await authService.resetPassword(token, ip, userAgent, newPassword);
 
     // attach tokens to cookie
     attachToCookie.attachTokens(res, accessToken, refreshToken);
@@ -96,12 +120,20 @@ const resetPassword = async (req, res) => {
 const updatePassword = async (req, res) => {
     const { currentPassword, newPassword } = req.body;
     const { userId } = req.user;
+    const ip = req.ip;
+    const userAgent = req.get('user-agent');
 
     if (!currentPassword || !newPassword) {
         throw new BadRequestError('both current password and new password are required');
     }
 
-    const { user, accessToken, refreshToken } = await authService.updatePassword(req, currentPassword, newPassword);
+    const { user, accessToken, refreshToken } = await authService.updatePassword(
+        userId,
+        ip,
+        userAgent,
+        currentPassword,
+        newPassword
+    );
 
     // attach tokens to cookie
     attachToCookie.attachTokens(res, accessToken, refreshToken);
