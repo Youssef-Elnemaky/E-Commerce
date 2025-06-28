@@ -7,6 +7,7 @@ const { generateRandomToken, hashToken } = require('../utils/tokenUtil');
 const { UnauthenticatedError, BadRequestError, UnauthorizedError } = require('../errors');
 const emailService = require('./emailService');
 const userService = require('./userService');
+const redisService = require('./redisService');
 
 const register = async (name, email, password, ip, userAgent) => {
     // creating a user in the database
@@ -44,6 +45,9 @@ const register = async (name, email, password, ip, userAgent) => {
 const login = async (email, password, ip, userAgent) => {
     // query the database with the passed email
     const user = await userService.getUserAndSelect({ email }, '+password +tokenVersion');
+
+    // cache the user
+    await redisService.setCachedResource('user', user._id, user, ms('1d') / 1000);
 
     // generic error so we don't leak that email is not stored in the database or not
     if (!user) {
@@ -111,11 +115,26 @@ const rotateRefreshToken = async (refreshToken, ip, userAgent) => {
         throw new UnauthenticatedError('invalid refresh token, relogin');
     }
 
-    // get the user from the DB
-    const user = await userService.getUserAndSelect({ _id: token.user }, '+tokenVersion');
+    // try to get the user from the cached data
+    let user = await redisService.getCachedResource('user', token.user);
+    // no cache hit, check DB
     if (!user) {
-        throw new UnauthenticatedError('user deleted, relogin');
+        // get the user from the DB
+        user = await userService.getUserAndSelect({ _id: token.user }, '+password +tokenVersion');
+        // no DB hit, throw an error
+        if (!user) {
+            throw new UnauthenticatedError('user deleted, relogin');
+        }
+        await redisService.setCachedResource('user', user._id, user, ms('1d') / 1000);
     }
+
+    // cache the tokenVersion
+    await redisService.setCachedResource(
+        'tokenVersion',
+        user._id,
+        user.tokenVersion,
+        ms(process.env.AT_COOKIE_LIFETIME) / 1000
+    );
 
     // refresh token rotation (issue a new one, save it to DB, delete the old one, and a get a new access token)
     // issue a new refresh token and access token
@@ -131,7 +150,7 @@ const rotateRefreshToken = async (refreshToken, ip, userAgent) => {
         token: hashedNewRefreshToken,
         ip,
         userAgent,
-        user: user.id,
+        user: user._id,
         expiresAt: new Date(Date.now() + ms(process.env.RT_COOKIE_LIFETIME)),
     });
 
@@ -145,11 +164,14 @@ const logout = async (refreshToken) => {
     const hashedRefreshToken = await hashToken(refreshToken);
 
     // delete refresh token from the database
-    await Token.deleteOne({ token: hashedRefreshToken });
+    const deletedToken = await Token.findOneAndDelete({ token: hashedRefreshToken });
+
+    // remove the user from cached data
+    await redisService.invalidateCachedResource('user', deletedToken.user);
 };
 
 const forgotPassword = async (email) => {
-    const user = (await userService.getAllUsers({}, { email }))[0];
+    const user = await userService.getUserAndSelect({ email });
     if (!user) {
         return;
     }
@@ -157,7 +179,7 @@ const forgotPassword = async (email) => {
     const hashedResetToken = await hashToken(resetToken);
 
     user.resetToken = hashedResetToken;
-    user.resetTokenExpiresAt = Date.now() + 10 * 60 * 1000; // after 10 minutes
+    user.resetTokenExpiresAt = Date.now() + 10 * 60 * 1000; // expires after 10 minutes
     await user.save();
 
     const resetLink = `${process.env.FRONTEND_HOST}/reset-password?token=${resetToken}`;
