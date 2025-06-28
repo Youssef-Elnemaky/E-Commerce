@@ -231,6 +231,14 @@ const resetPassword = async (token, ip, userAgent, newPassword) => {
     user.tokenVersion = user.tokenVersion + 1;
     await user.save();
 
+    // cache the tokenVersion
+    await redisService.setCachedResource(
+        'tokenVersion',
+        user._id,
+        user.tokenVersion,
+        ms(process.env.AT_COOKIE_LIFETIME) / 1000
+    );
+
     const { _id, name, email, role } = user;
     return { user: { _id, name, email, role }, accessToken, refreshToken };
 };
@@ -274,6 +282,14 @@ const updatePassword = async (userId, ip, userAgent, currentPassword, newPasswor
     // update token version
     user.tokenVersion = user.tokenVersion + 1;
     await user.save();
+
+    // cache the tokenVersion
+    await redisService.setCachedResource(
+        'tokenVersion',
+        user._id,
+        user.tokenVersion,
+        ms(process.env.AT_COOKIE_LIFETIME) / 1000
+    );
     const { _id, name, email, role } = user;
     return { user: { _id, name, email, role }, accessToken, refreshToken };
 };
