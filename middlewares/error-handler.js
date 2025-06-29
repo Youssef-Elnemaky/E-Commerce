@@ -9,10 +9,16 @@ const errorHandlerMiddleware = (err, req, res, next) => {
     };
 
     //check for mongoose validation errors
-    if (err.name == 'ValidationError') {
+    if (err.name === 'ValidationError') {
         customError.statusCode = StatusCodes.BAD_REQUEST;
         customError.message = Object.values(err.errors)
-            .map((item) => item.message)
+            .map((item) => {
+                // this helps with the problem of passing invalid ID for a data field of type: mongoose.Schema.Types.ObjectId
+                if (item.name === 'CastError') {
+                    return `invalid ${item.path}: ${item.value}`;
+                }
+                return item.message;
+            })
             .join(' & ');
     }
 
@@ -24,7 +30,7 @@ const errorHandlerMiddleware = (err, req, res, next) => {
 
     //check for cast error (bad id values)
     if (err.name == 'CastError') {
-        customError.message = `No item found with id: ${err.value}.`;
+        customError.message = `invalid ${err.path}: ${err.value}`;
         customError.statusCode = StatusCodes.NOT_FOUND;
     }
 
