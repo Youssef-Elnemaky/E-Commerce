@@ -61,6 +61,20 @@ class APIFeatures {
         return this;
     }
 
+    populate(populate) {
+        // Populating
+        for (let i = 0; i < populate.length; i++) {
+            this.query.populate(populate);
+        }
+        return this;
+    }
+
+    select(select) {
+        // Selecting
+        this.query.select(select);
+        return this;
+    }
+
     async execute() {
         const docs = await this.query;
         return docs;
