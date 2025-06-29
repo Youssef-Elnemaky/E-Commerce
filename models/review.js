@@ -14,7 +14,7 @@ const ReviewSchema = new mongoose.Schema(
             min: [1, 'review must be at least 1'],
             max: [5, 'review cannot exceed 5'],
         },
-        user: {
+        createdBy: {
             type: mongoose.Schema.Types.ObjectId,
             required: [true, 'review must belong to a user'],
         },
