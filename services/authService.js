@@ -46,13 +46,13 @@ const login = async (email, password, ip, userAgent) => {
     // query the database with the passed email
     const user = await userService.getUserAndSelect({ email }, '+password +tokenVersion');
 
-    // cache the user
-    await redisService.setCachedResource('user', user._id, user, ms('1d') / 1000);
-
     // generic error so we don't leak that email is not stored in the database or not
     if (!user) {
         throw new UnauthenticatedError('invalid credentials');
     }
+
+    // cache the user
+    await redisService.setCachedResource('user', user._id, user, ms('1d') / 1000);
 
     // check the passed password
     const isMatch = await user.checkPassword(password);
