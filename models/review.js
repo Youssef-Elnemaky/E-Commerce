@@ -16,10 +16,12 @@ const ReviewSchema = new mongoose.Schema(
         },
         createdBy: {
             type: mongoose.Schema.Types.ObjectId,
+            ref: 'User',
             required: [true, 'review must belong to a user'],
         },
         product: {
             type: mongoose.Schema.Types.ObjectId,
+            ref: 'Product',
             required: [true, 'review must belong to a product'],
         },
     },
