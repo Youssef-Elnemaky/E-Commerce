@@ -3,13 +3,14 @@ const APIFeatures = require('../utils/apiFeatures');
 
 const getAll =
     (Model) =>
-    async (queryParams = {}, customFilter = {}) => {
+    async (queryParams = {}, customFilter = {}, populate = [], select = '') => {
         const features = new APIFeatures(Model.find(customFilter), queryParams)
             .filter()
             .sort()
             .limitFields()
-            .paginate();
-
+            .paginate()
+            .populate(populate)
+            .select(select);
         const docs = features.execute();
         return docs;
     };
@@ -20,7 +21,7 @@ const createOne = (Model) => async (data) => {
 
 const getOne =
     (Model) =>
-    async (id, populate = '') => {
+    async (id, populate = []) => {
         const doc = await Model.findById(id).populate(populate);
         if (!doc) {
             throw new NotFoundError(`${Model.modelName} with id: ${id} not found`);
