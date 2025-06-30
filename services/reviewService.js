@@ -27,21 +27,38 @@ const getReview = async (reviewId) => {
     return review;
 };
 
+const createReview = async (data) => {
+    const review = await crudService.createOne(Review)(data);
+    const { ratingsQuantity, ratingsAvg } = (await Review.calcAvgRating(review.product._id))[0];
+    await productService.updateProduct(review.product._id, { ratingsQuantity, ratingsAvg });
+    return review;
+};
+
 const updateReview = async (review, updateData) => {
+    // update review
     review.set(updateData);
+    const ratingChanged = review.isModified('rating');
     await review.save();
+
+    // update ratings on product only if rating was changed
+    if (ratingChanged) {
+        const { ratingsQuantity, ratingsAvg } = (await Review.calcAvgRating(review.product._id))[0];
+        await productService.updateProduct(review.product._id, { ratingsQuantity, ratingsAvg });
+    }
     return review;
 };
 
 const deleteReview = async (review) => {
     const deletedReview = await review.deleteOne();
+    const { ratingsQuantity, ratingsAvg } = (await Review.calcAvgRating(review.product._id))[0];
+    await productService.updateProduct(review.product._id, { ratingsQuantity, ratingsAvg });
     return deletedReview;
 };
 
 module.exports = {
     getAllReviews,
     getReview,
-    createReview: crudService.createOne(Review),
+    createReview,
     updateReview,
     deleteReview,
 };
