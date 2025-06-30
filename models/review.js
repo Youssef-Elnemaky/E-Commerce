@@ -35,4 +35,21 @@ const ReviewSchema = new mongoose.Schema(
 //use it later to make sure that only 1 user can post 1 review per product
 // ReviewSchema.index({ user: 1, product: 1 }, { unique: true });
 
+ReviewSchema.statics.calcAvgRating = async function (productId) {
+    const stats = await this.aggregate([
+        {
+            $match: { product: productId },
+        },
+        {
+            $group: {
+                _id: '$product',
+                ratingsQuantity: { $sum: 1 },
+                ratingsAvg: { $avg: '$rating' },
+            },
+        },
+    ]);
+
+    return stats;
+};
+
 module.exports = mongoose.model('Review', ReviewSchema);
