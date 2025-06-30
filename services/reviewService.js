@@ -56,6 +56,7 @@ const deleteReview = async (review) => {
 };
 
 const deleteReviewsOnProduct = async (productId) => {
+    console.log('i am here');
     const deletedReviews = await Review.deleteMany({ product: productId });
     return deletedReviews;
 };

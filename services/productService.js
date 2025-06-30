@@ -2,9 +2,7 @@ const Product = require('../models/product');
 const crudService = require('./crudService');
 const jwt = require('../utils/jwt');
 const imageService = require('./imageService');
-const { UnauthorizedError } = require('../errors');
 const uploadService = require('./uploadService');
-const reviewService = require('../services/reviewService');
 
 const createProduct = async (data, imageToken) => {
     // verify the image token
@@ -77,8 +75,8 @@ const deleteProduct = async (productId) => {
     await uploadService.removeFromCloudinary(product.imagePublicId);
 
     // delete reviews from the DB
+    const reviewService = require('./reviewService'); // only require here to fix circular require
     await reviewService.deleteReviewsOnProduct(productId);
-
     await product.deleteOne();
 };
 
