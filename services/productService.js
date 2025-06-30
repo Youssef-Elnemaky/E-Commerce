@@ -78,9 +78,25 @@ const deleteProduct = async (productId) => {
     await product.deleteOne();
 };
 
+const getProduct = async (productId) => {
+    const populate = [
+        {
+            path: 'reviews',
+            select: '-__v -updatedAt -_id', // all excluded
+            options: { limit: 20, sort: { createdAt: -1 } },
+            populate: {
+                path: 'createdBy', // this is the field inside Review
+                select: 'name',
+            },
+        },
+    ];
+    const product = await crudService.getOne(Product)(productId, populate);
+    return product;
+};
+
 module.exports = {
     getAllProducts: crudService.getAll(Product),
-    getProduct: crudService.getOne(Product),
+    getProduct,
     updateProduct,
     createProduct,
     deleteProduct,
