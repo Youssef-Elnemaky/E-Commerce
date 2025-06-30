@@ -24,8 +24,14 @@ const ProductSchema = new mongoose.Schema(
         slug: {
             type: String,
         },
-        ratingAvg: {
+        ratingsAvg: {
             type: Number,
+            default: 0,
+            set: (v) => Math.round(v * 10) / 10,
+        },
+        ratingsQuantity: {
+            type: Number,
+            default: 0,
         },
         inStock: {
             type: Boolean,
