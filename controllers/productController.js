@@ -1,5 +1,6 @@
 const { StatusCodes } = require('http-status-codes');
 const productService = require('../services/productService');
+const { UnauthorizedError } = require('../errors');
 
 exports.getAllProducts = async (req, res) => {
     const products = await productService.getAllProducts(req.query);
@@ -13,13 +14,25 @@ exports.getProduct = async (req, res) => {
 };
 
 exports.createProduct = async (req, res) => {
-    const product = await productService.createProduct(req, req.body);
+    // read the token from cookies
+    const imageToken = req.cookies.imageToken;
+    // check if the cookie is still there and hasn't expired
+    if (!imageToken) {
+        throw new UnauthorizedError('image token expired. Please, upload the image again');
+    }
+    // overwrite createdBy
+    req.body.createdBy = req.user.userId;
+    const product = await productService.createProduct(req.body, imageToken);
     res.clearCookie('imageToken'); // clear the cookie after a successful creation
     res.status(StatusCodes.CREATED).json({ status: 'success', product });
 };
 
 exports.updateProduct = async (req, res) => {
-    const updatedProduct = await productService.updateProduct(req, req.params.id, req.body);
+    // read the token from cookies
+    const imageToken = req.cookies.imageToken;
+    // overwrite createdBy if it was changed
+    req.body.createdBy = req.user.userId;
+    const updatedProduct = await productService.updateProduct(req.params.id, req.body, imageToken);
     res.clearCookie('imageToken'); // clear the cookie after a successful update
     res.status(StatusCodes.OK).json({ status: 'success', updatedProduct });
 };

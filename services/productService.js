@@ -5,14 +5,7 @@ const imageService = require('./imageService');
 const { UnauthorizedError } = require('../errors');
 const uploadService = require('./uploadService');
 
-const createProduct = async (req, data) => {
-    // read the token from cookies
-    const imageToken = req.cookies.imageToken;
-    // check if the cookie is still there and hasn't expired
-    if (!imageToken) {
-        throw new UnauthorizedError('image token expired. Please, upload the image again');
-    }
-
+const createProduct = async (data, imageToken) => {
     // verify the image token
     const payload = await jwt.verifyToken(imageToken);
     const { url, public_id, imageId } = payload;
@@ -25,8 +18,6 @@ const createProduct = async (req, data) => {
     data.imagePublicId = public_id;
     data.image = imageId;
 
-    // create the product
-    data.createdBy = req.user.userId;
     const newProduct = await crudService.createOne(Product)(data);
 
     // marking the image as used to skip CRON job of removing unused images later on
@@ -35,10 +26,7 @@ const createProduct = async (req, data) => {
     return newProduct;
 };
 
-const updateProduct = async (req, productId, updateData) => {
-    // read the token from cookies
-    const imageToken = req.cookies.imageToken;
-
+const updateProduct = async (productId, updateData, imageToken) => {
     // If no image token, skip image logic and just update product
     if (!imageToken) {
         // update the product
