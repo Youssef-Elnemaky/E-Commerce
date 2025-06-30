@@ -57,11 +57,17 @@ const ProductSchema = new mongoose.Schema(
             ref: 'User',
         },
     },
-    { timestamps: true }
+    { timestamps: true, toJSON: { virtuals: true }, toObject: { virtuals: true }, id: false }
 );
 
 ProductSchema.pre('save', function () {
     this.slug = slugify(this.name);
+});
+
+ProductSchema.virtual('reviews', {
+    ref: 'Review',
+    localField: '_id',
+    foreignField: 'product',
 });
 
 module.exports = mongoose.model('Product', ProductSchema);
