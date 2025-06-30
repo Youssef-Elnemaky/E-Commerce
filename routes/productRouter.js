@@ -1,6 +1,7 @@
 const express = require('express');
 const authenticate = require('../middlewares/authenticate');
 const restrictTo = require('../middlewares/restrictTo');
+const reviewRouter = require('./reviewRouter');
 
 const {
     getAllProducts,
@@ -16,6 +17,9 @@ router
     .route('/')
     .get(getAllProducts)
     .post([authenticate, restrictTo('admin'), createProduct]);
+
+router.use('/:productId/reviews', reviewRouter); // handle nested routes
+
 router
     .route('/:id')
     .get(getProduct)
