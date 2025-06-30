@@ -55,10 +55,16 @@ const deleteReview = async (review) => {
     return deletedReview;
 };
 
+const deleteReviewsOnProduct = async (productId) => {
+    const deletedReviews = await Review.deleteMany({ product: productId });
+    return deletedReviews;
+};
+
 module.exports = {
     getAllReviews,
     getReview,
     createReview,
     updateReview,
     deleteReview,
+    deleteReviewsOnProduct,
 };

@@ -4,6 +4,7 @@ const jwt = require('../utils/jwt');
 const imageService = require('./imageService');
 const { UnauthorizedError } = require('../errors');
 const uploadService = require('./uploadService');
+const reviewService = require('../services/reviewService');
 
 const createProduct = async (data, imageToken) => {
     // verify the image token
@@ -74,6 +75,9 @@ const deleteProduct = async (productId) => {
     await imageService.deleteImage(product.image);
     // delete the image from cloudinary
     await uploadService.removeFromCloudinary(product.imagePublicId);
+
+    // delete reviews from the DB
+    await reviewService.deleteReviewsOnProduct(productId);
 
     await product.deleteOne();
 };
